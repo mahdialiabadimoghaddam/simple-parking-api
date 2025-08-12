@@ -14,7 +14,7 @@ const (
 )
 
 type parking struct {
-	places  [][]parkingPlace
+	places  [ParkingRowsCount][ParkingColumnsCount]*parkingPlace
 	tickets map[string]*ticket
 }
 
@@ -43,14 +43,14 @@ type parkingBill struct {
 }
 
 func populate(parking *parking) {
-	parking.submitCustomer("1938251", 1754068008213, &parking.places[1][1])
-	parking.submitCustomer("4284967", 1754068061928, &parking.places[0][5])
-	parking.submitCustomer("5230194", 1754068051734, &parking.places[4][3])
-	parking.submitCustomer("8093116", 1754068000007, &parking.places[3][2])
-	parking.submitCustomer("7392840", 1754068033801, &parking.places[3][6])
-	parking.submitCustomer("1175362", 1754068076302, &parking.places[5][9])
-	parking.submitCustomer("6548937", 1754068043519, &parking.places[6][5])
-	parking.submitCustomer("3849021", 1754068066452, &parking.places[9][1])
+	parking.submitCustomer("1938251", 1754068008213, parking.places[1][1])
+	parking.submitCustomer("4284967", 1754068061928, parking.places[0][5])
+	parking.submitCustomer("5230194", 1754068051734, parking.places[4][3])
+	parking.submitCustomer("8093116", 1754068000007, parking.places[3][2])
+	parking.submitCustomer("7392840", 1754068033801, parking.places[3][6])
+	parking.submitCustomer("1175362", 1754068076302, parking.places[5][9])
+	parking.submitCustomer("6548937", 1754068043519, parking.places[6][5])
+	parking.submitCustomer("3849021", 1754068066452, parking.places[9][1])
 }
 
 func (parking *parking) submitCustomer(vehiclePlateNumber string, enteryTime int, parkingPlace *parkingPlace) {
@@ -79,7 +79,7 @@ func (parking *parking) processCustomer(car_type, vehiclePlateNumber string) {
 				parking.submitCustomer(
 					vehiclePlateNumber,
 					int(time.Now().UnixMilli()),
-					&parking.places[row][column],
+					parking.places[row][column],
 				)
 				return
 			}
@@ -139,7 +139,7 @@ func (parking *parking) deleteTicket(vehiclePlateNumber string) {
 
 func (parking *parking) updateTicket(vehiclePlateNumber string, enteryTime int, parking_row, parking_column int) {
 	parking.deleteTicket(vehiclePlateNumber)
-	parking.submitCustomer(vehiclePlateNumber, enteryTime, &parking.places[parking_row][parking_column])
+	parking.submitCustomer(vehiclePlateNumber, enteryTime, parking.places[parking_row][parking_column])
 }
 
 func (parking *parking) String() string {
@@ -176,7 +176,7 @@ func (parking *parking) String() string {
 func newParking() *parking {
 	parking := &parking{
 		tickets: make(map[string]*ticket),
-		places:  [ParkingRowsCount][ParkingColumnsCount]parkingPlace{},
+		places:  [ParkingRowsCount][ParkingColumnsCount]*parkingPlace{},
 	}
 
 	for row := range 10 {
@@ -190,11 +190,11 @@ func newParking() *parking {
 				carType = "truck"
 			}
 
-			parking.places[row][column] = parkingPlace{carType, true, row, column}
+			parking.places[row][column] = &parkingPlace{carType, true, row, column}
 		}
 	}
 
 	populate(parking)
-
+	
 	return parking
 }
