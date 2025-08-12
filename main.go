@@ -15,8 +15,14 @@ func main() {
 	fmt.Println(theParking)
 
 	chiRouter := chi.NewRouter()
+
+	chiRouter.Get("/stat", handleStatusRequest)
+
 	chiRouter.Post("/parkingEntery", handleParkingEntery)
 	chiRouter.Post("/parkingExit", handleParkingExit)
+
+	chiRouter.Delete("/{vehiclePlateNumber}", deleteTicket)
+	chiRouter.Put("/{vehiclePlateNumber}", updateTicket)
 
 	server := &http.Server{
 		Addr:    ":3000",
@@ -26,6 +32,14 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		fmt.Println("there was an error while serving and listening!")
 	}
+}
+
+func handleStatusRequest(responseWriter http.ResponseWriter, request *http.Request) {
+	parkingStat := theParking.getStat()
+
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(responseWriter).Encode(parkingStat)
 }
 
 func handleParkingEntery(responseWriter http.ResponseWriter, request *http.Request) {
@@ -62,5 +76,27 @@ func handleParkingExit(responseWriter http.ResponseWriter, request *http.Request
 		json.NewEncoder(responseWriter).Encode(parkingBillData)
 
 		fmt.Print(theParking)
+	}
+}
+
+func deleteTicket(responseWriter http.ResponseWriter, request *http.Request) {
+	theParking.deleteTicket(chi.URLParam(request, "vehiclePlateNumber"))
+}
+
+func updateTicket(responseWriter http.ResponseWriter, request *http.Request) {
+	vehiclePlateNumber := chi.URLParam(request, "vehiclePlateNumber")
+
+	type newTicketRequestData struct {
+		EnteryTime     int `json:"enteryTime"`
+		Parking_row    int `json:"parking_row"`
+		Parking_column int `json:"parking_column"`
+	}
+	var newTicketData newTicketRequestData
+	err := json.NewDecoder(request.Body).Decode(&newTicketData)
+	if err != nil {
+		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+	} else {
+		theParking.deleteTicket(vehiclePlateNumber)
+		theParking.updateTicket(vehiclePlateNumber, newTicketData.EnteryTime, newTicketData.Parking_row, newTicketData.Parking_column)
 	}
 }

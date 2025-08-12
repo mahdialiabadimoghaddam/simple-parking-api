@@ -5,13 +5,32 @@ import (
 	"time"
 )
 
+const (
+	ParkingRowsCount    = 10
+	ParkingColumnsCount = 10
+	MotorCycleRowsCount = 2
+	CarRowsCount        = 6
+	TruckRowsCount      = 2
+)
+
 type parking struct {
-	places  [10][10]parkingPlace
-	tickets map[string]ticket
+	places  [][]parkingPlace
+	tickets map[string]*ticket
 }
 
-type ticket struct{
-	enteryTime int
+type parkingStat struct {
+	ParkingSpacesCount               int `json:"Parking Spaces Count"`
+	FreeParkingSpacesCount           int `json:"Free Parking Spaces Count"`
+	MotorCycleParkingSpacesCount     int `json:"MotorCycle Parking Spaces Count"`
+	FreeMotorCycleParkingSpacesCount int `json:"Free MotorCycle Parking Spaces Count"`
+	CarParkingSpacesCount            int `json:"Car Parking Spaces Count"`
+	FreeCarParkingSpacesCount        int `json:"Free Car Parking Spaces Count"`
+	TruckParkingSpacesCount          int `json:"Truck Parking Spaces Count"`
+	FreeTruckParkingSpacesCount      int `json:"Free Truck Parking Spaces Count"`
+}
+
+type ticket struct {
+	enteryTime   int
 	parkingPlace *parkingPlace
 }
 
@@ -39,7 +58,7 @@ func (parking *parking) submitCustomer(vehiclePlateNumber string, enteryTime int
 		enteryTime:   enteryTime,
 		parkingPlace: parkingPlace,
 	}
-	parking.tickets[vehiclePlateNumber] = newTicket
+	parking.tickets[vehiclePlateNumber] = &newTicket
 	parkingPlace.toggle_empty()
 }
 
@@ -47,15 +66,15 @@ func (parking *parking) processCustomer(car_type, vehiclePlateNumber string) {
 	var row_min, row_max int
 	switch car_type {
 	case "motorcycle":
-		row_min, row_max = 0, 2
+		row_min, row_max = 0, MotorCycleRowsCount
 	case "car":
-		row_min, row_max = 2, 8
+		row_min, row_max = MotorCycleRowsCount, MotorCycleRowsCount + CarRowsCount
 	case "truck":
-		row_min, row_max = 8, 10
+		row_min, row_max = ParkingRowsCount - TruckRowsCount, ParkingRowsCount
 	}
 
 	for row := row_min; row < row_max; row++ {
-		for column := range 10 {
+		for column := range ParkingColumnsCount {
 			if parking.places[row][column].empty {
 				parking.submitCustomer(
 					vehiclePlateNumber,
@@ -87,25 +106,61 @@ func (parking *parking) exitParking(parkingBill *parkingBill) {
 
 }
 
+func (parking *parking) getStat() parkingStat {
+	parking_stat := parkingStat{
+		ParkingRowsCount * ParkingColumnsCount,
+		ParkingRowsCount*ParkingColumnsCount - len(parking.tickets),
+		MotorCycleRowsCount * ParkingColumnsCount,
+		MotorCycleRowsCount * ParkingColumnsCount,
+		CarRowsCount * ParkingColumnsCount,
+		CarRowsCount * ParkingColumnsCount,
+		TruckRowsCount * ParkingColumnsCount,
+		TruckRowsCount * ParkingColumnsCount,
+	}
+
+	for _, ticket := range parking.tickets {
+		switch ticket.parkingPlace.vehicleType {
+		case "motorcycle":
+			parking_stat.FreeMotorCycleParkingSpacesCount--
+		case "car":
+			parking_stat.FreeCarParkingSpacesCount--
+		case "truck":
+			parking_stat.FreeTruckParkingSpacesCount--
+		}
+	}
+
+	return parking_stat
+}
+
+func (parking *parking) deleteTicket(vehiclePlateNumber string) {
+	parking.tickets[vehiclePlateNumber].parkingPlace.toggle_empty()
+	delete(parking.tickets, vehiclePlateNumber)
+}
+
+func (parking *parking) updateTicket(vehiclePlateNumber string, enteryTime int, parking_row, parking_column int) {
+	parking.deleteTicket(vehiclePlateNumber)
+	parking.submitCustomer(vehiclePlateNumber, enteryTime, &parking.places[parking_row][parking_column])
+}
+
 func (parking *parking) String() string {
-	var parkingString [10][10]string
+	var parkingString [ParkingRowsCount][ParkingColumnsCount]string
 	for vehiclePlateNumber, ticket := range parking.tickets {
 		parkingString[ticket.parkingPlace.row][ticket.parkingPlace.column] = vehiclePlateNumber
 	}
 
 	finalString := ""
-	for row := range 10 {
+	for row := range ParkingRowsCount {
 		var carType string
-		if row < 2 {
+		if row < MotorCycleRowsCount {
 			carType = "m:"
-		} else if row < 8 {
+		} else if row < MotorCycleRowsCount + CarRowsCount {
 			carType = "c:"
 		} else {
 			carType = "t:"
 		}
 		finalString += fmt.Sprintf("%s\t| ", carType)
 
-		for column := range 10 {
+		for column := range ParkingColumnsCount {
 			if parking.places[row][column].empty {
 				finalString += "------- | "
 			} else {
@@ -120,8 +175,8 @@ func (parking *parking) String() string {
 
 func newParking() *parking {
 	parking := &parking{
-		tickets: make(map[string]ticket),
-		places:  [10][10]parkingPlace{},
+		tickets: make(map[string]*ticket),
+		places:  [ParkingRowsCount][ParkingColumnsCount]parkingPlace{},
 	}
 
 	for row := range 10 {
